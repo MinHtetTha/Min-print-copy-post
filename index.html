@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Min Copy & Print - Facebook Style</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-orange: #FF7F00;
+            --white: #ffffff;
+            --fb-bg: #f0f2f5;
+            --text-main: #050505;
+            --text-sub: #65676b;
+        }
+
+        body { font-family: 'Inter', 'Pyidaungsu', sans-serif; background-color: var(--fb-bg); margin: 0; }
+
+        header {
+            background-color: var(--primary-orange);
+            color: white; padding: 15px; text-align: center;
+            position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .feed-container { max-width: 500px; margin: 20px auto; padding: 0 10px; }
+
+        .post-card { background: var(--white); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden; border: none; }
+        .post-header { display: flex; align-items: center; padding: 12px; }
+        .profile-pic { width: 40px; height: 40px; border-radius: 50%; background: var(--primary-orange); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; }
+        
+        .post-body { padding: 0 16px 16px 16px; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; }
+        /* Markdown ထဲက ပုံတွေကို Facebook ပုံစံ ကြီးကြီးမြင်ရအောင် */
+        .post-body img { width: 100%; height: auto; border-radius: 4px; margin-top: 10px; display: block; }
+
+        .action-bar { display: flex; border-top: 1px solid #eee; padding: 5px; background: #fff; }
+        .action-btn { flex: 1; text-align: center; padding: 10px; color: var(--text-sub); text-decoration: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+        .action-btn:hover { background: #f2f2f2; border-radius: 4px; }
+        .btn-call { color: var(--primary-orange) !important; }
+
+        #loading { text-align: center; padding: 20px; color: var(--text-sub); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h2 style="margin:0;">Min Feed</h2>
+</header>
+
+<div class="feed-container">
+    <div id="loading">Post များကို ရယူနေသည်...</div>
+    <div id="feed"></div>
+</div>
+
+<script>
+    // သင့် Repo အချက်အလက်များ
+    const REPO_OWNER = 'MinHtetTha'; 
+    const REPO_NAME = 'Min-print-copy-post'; 
+
+    async function fetchPosts() {
+        const feedElement = document.getElementById('feed');
+        const loadingElement = document.getElementById('loading');
+
+        try {
+            // GitHub Issues ကို API နဲ့ ခေါ်ယူခြင်း
+            const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=open&sort=created`);
+            const issues = await response.json();
+
+            loadingElement.style.display = 'none';
+
+            if (!Array.isArray(issues) || issues.length === 0) {
+                feedElement.innerHTML = '<p style="text-align:center">Post မရှိသေးပါ။ Issues ထဲမှာ Post သွားတင်ပေးပါ။</p>';
+                return;
+            }
+
+            feedElement.innerHTML = issues.map(issue => {
+                // Markdown ထဲက ![alt](url) ပုံတွေကို HTML <img> အဖြစ်ပြောင်းလဲခြင်း
+                let content = issue.body || "";
+                let htmlContent = content.replace(/!\[.*?\]\((.*?)\)/g, '<img src="$1" alt="post-image">');
+
+                return `
+                    <div class="post-card">
+                        <div class="post-header">
+                            <div class="profile-pic">M</div>
+                            <div class="post-info">
+                                <b style="display:block">Min Copy & Print</b>
+                                <small style="color:var(--text-sub)">${new Date(issue.created_at).toLocaleDateString()} · 🌍</small>
+                            </div>
+                        </div>
+                        <div class="post-body">
+                            <strong style="display:block; margin-bottom:8px; color:var(--primary-orange); font-size:1.1rem;">${issue.title}</strong>
+                            ${htmlContent}
+                        </div>
+                        <div class="action-bar">
+                            <div class="action-btn" onclick="this.style.color='#e41e3f'; this.innerText='❤️ Loved'">❤️ Love</div>
+                            <a href="https://t.me/minhtetthar428" target="_blank" class="action-btn">💬 Chat</a>
+                            <a href="tel:09xxxxxxxxx" class="action-btn btn-call">📞 Call</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (error) {
+            loadingElement.innerText = "Error: GitHub API နဲ့ ချိတ်ဆက်လို့မရပါ။";
+            console.error(error);
+        }
+    }
+
+    fetchPosts();
+</script>
+
+</body>
+</html>
