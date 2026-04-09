@@ -7,19 +7,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Pyidaungsu:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root { --primary-orange: #FF7F00; --white: #ffffff; --fb-bg: #f0f2f5; --text-main: #050505; --text-sub: #65676b; }
-        body { font-family: 'Inter', 'Pyidaungsu', sans-serif; background-color: var(--fb-bg); margin: 0; }
+        body { font-family: 'Inter', 'Pyidaungsu', sans-serif; background-color: var(--fb-bg); margin: 0; padding-bottom: 50px; }
         header { background-color: var(--primary-orange); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         .search-container { max-width: 500px; margin: 15px auto; padding: 0 10px; }
         #searchInput { width: 100%; padding: 12px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; outline: none; background: white; }
 
-        .feed-container { max-width: 500px; margin: 0 auto; padding: 0 10px 50px 10px; }
-        .post-card { background: var(--white); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden; }
+        .feed-container { max-width: 500px; margin: 0 auto; padding: 0 10px; }
+        .post-card { background: var(--white); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .post-header { display: flex; align-items: center; padding: 12px; }
         .profile-pic { width: 40px; height: 40px; border-radius: 50%; background: var(--primary-orange); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; }
         
         .post-body { padding: 0 16px 16px 16px; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
-        .post-body img, .post-body video { width: 100%; height: auto; border-radius: 4px; margin-top: 10px; display: block; max-height: 500px; background: #000; }
+        .post-body img, .post-body video { width: 100%; height: auto; border-radius: 4px; margin-top: 10px; display: block; background: #000; }
         
         .action-bar { display: flex; border-top: 1px solid #eee; padding: 5px; background: #fff; }
         .action-btn { flex: 1; text-align: center; padding: 10px; color: var(--text-sub); text-decoration: none; font-size: 0.9rem; font-weight: 600; cursor: pointer; border-radius: 4px; }
@@ -51,17 +53,15 @@
 
     async function fetchPosts() {
         try {
-            // Cache ကို ရှောင်ဖို့ timestamp ထည့်ထားပါတယ်
-            const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=open&sort=created&t=${new Date().getTime()}`);
-            
-            if (!response.ok) throw new Error('Network response was not ok');
-            
+            // Cache ကိုကျော်ရန် timestamp ပါသော API ခေါ်ယူမှု
+            const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?state=open&sort=created&per_page=100&t=${new Date().getTime()}`);
+            if (!response.ok) throw new Error('Network error');
             allPosts = await response.json();
             document.getElementById('loading').style.display = 'none';
             renderPosts(allPosts);
         } catch (error) {
-            console.error("Error fetching posts:", error);
-            document.getElementById('loading').innerText = "ခေတ္တစောင့်ဆိုင်းပါ သို့မဟုတ် Refresh ပြန်လုပ်ပါ။";
+            console.error("Error:", error);
+            document.getElementById('loading').innerText = "ခေတ္တစောင့်ဆိုင်းပါ သို့မဟုတ် Page ကို Refresh လုပ်ပေးပါ။";
         }
     }
 
@@ -70,25 +70,24 @@
         feedElement.innerHTML = posts.map(issue => {
             let content = issue.body || "";
             
-            // Video များအတွက် (mp4, mov, webm) - link သီးသန့်ဖြစ်စေ Markdown ဖြစ်စေ အလုပ်လုပ်အောင် ပြင်ထားပါတယ်
-            const videoRegex = /(https?:\/\/[^\s]+?\.(mp4|mov|webm)[^\s)]*)/gi;
+            // ၁။ Video ရှာဖွေခြင်း (GitHub Format အသစ်များကိုပါ ဖမ်းမိရန်)
+            const videoRegex = /(https?:\/\/[^\s]+?\.(mp4|mov|webm|m4v)[^\s)]*)/gi;
             content = content.replace(videoRegex, (match) => {
-                // Markdown link ဖြစ်နေရင် URL ကိုပဲ ဆွဲထုတ်ပါတယ်
-                const cleanUrl = match.replace(/[()!\[\]]/g, '');
-                return `<video controls preload="metadata"><source src="${cleanUrl}" type="video/mp4">Your browser does not support the video tag.</video>`;
+                const url = match.replace(/[()!\[\]]/g, '');
+                return `<video controls preload="metadata" playsinline><source src="${url}" type="video/mp4">Your browser does not support the video tag.</video>`;
             });
 
-            // ပုံများအတွက်
+            // ၂။ ပုံများအတွက်
             const imgRegex = /!\[.*?\]\((.*?\.(jpg|jpeg|png|gif|webp|bmp).*?)\)/gi;
             content = content.replace(imgRegex, '<img src="$1" loading="lazy">');
             
-            // အကယ်၍ link သီးသန့် ပုံများရှိနေလျှင်
-            const rawImgRegex = /(https?:\/\/github\.com\/user-attachments\/assets\/[^\s\)]+(?!\.(mp4|mov|webm)))/gi;
+            // ၃။ Raw GitHub Image Link များအတွက်
+            const rawImgRegex = /(https?:\/\/github\.com\/user-attachments\/assets\/[^\s\)]+(?!\.(mp4|mov|webm|m4v)))/gi;
             if (!content.includes('<img') && !content.includes('<video')) {
                 content = content.replace(rawImgRegex, '<img src="$1" loading="lazy">');
             }
 
-            // အခြား File (PDF, Zip) များအတွက်
+            // ၄။ အခြားဖိုင်များ (PDF, Zip)
             content = content.replace(/\[(.*?)\]\((.*?\.(pdf|zip|docx|xlsx|rar).*?)\)/gi, '<a href="$2" target="_blank" class="file-link">📁 Download $1</a>');
 
             return `
@@ -102,7 +101,7 @@
                     </div>
                     <div class="post-body">
                         <strong style="display:block; margin-bottom:8px; color:var(--primary-orange); font-size:1.1rem;">${issue.title}</strong>
-                        <div class="content-text">${content}</div>
+                        ${content}
                     </div>
                     <div class="action-bar">
                         <div class="action-btn" onclick="this.style.color='#e41e3f'; this.innerText='❤️ Loved'">❤️ Love</div>
