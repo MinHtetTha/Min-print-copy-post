@@ -11,14 +11,14 @@
         header { background-color: var(--primary-orange); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         .search-container { max-width: 500px; margin: 15px auto; padding: 0 10px; }
-        #searchInput { width: 100%; padding: 10px; border-radius: 20px; border: 1px solid #ddd; box-sizing: border-box; outline: none; }
+        #searchInput { width: 100%; padding: 12px; border-radius: 25px; border: 1px solid #ddd; box-sizing: border-box; outline: none; background: white; }
 
         .feed-container { max-width: 500px; margin: 0 auto; padding: 0 10px 50px 10px; }
         .post-card { background: var(--white); border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); overflow: hidden; }
         .post-header { display: flex; align-items: center; padding: 12px; }
         .profile-pic { width: 40px; height: 40px; border-radius: 50%; background: var(--primary-orange); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px; }
         
-        .post-body { padding: 0 16px 16px 16px; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; }
+        .post-body { padding: 0 16px 16px 16px; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; }
         .post-body img, .post-body video { width: 100%; height: auto; border-radius: 4px; margin-top: 10px; display: block; }
         
         .action-bar { display: flex; border-top: 1px solid #eee; padding: 5px; background: #fff; }
@@ -26,7 +26,7 @@
         .action-btn:hover { background: #f2f2f2; }
         .btn-call { color: var(--primary-orange) !important; }
         
-        .file-link { display: inline-block; background: #f0f2f5; padding: 8px 12px; border-radius: 6px; text-decoration: none; color: var(--primary-orange); font-weight: bold; margin-top: 10px; border: 1px dashed var(--primary-orange); }
+        .file-link { display: inline-flex; align-items: center; background: #fff9f2; padding: 10px 15px; border-radius: 8px; text-decoration: none; color: var(--primary-orange); font-weight: bold; margin-top: 10px; border: 1px solid var(--primary-orange); gap: 8px; }
     </style>
 </head>
 <body>
@@ -57,6 +57,7 @@
             renderPosts(allPosts);
         } catch (error) {
             console.error("Error fetching posts:", error);
+            document.getElementById('loading').innerText = "Error: Post များ ခေါ်ယူ၍မရပါ။";
         }
     }
 
@@ -65,12 +66,20 @@
         feedElement.innerHTML = posts.map(issue => {
             let content = issue.body || "";
             
-            // Video ပြောင်းလဲခြင်း
-            content = content.replace(/!\[.*?\]\((.*?\.(mp4|mov|webm))\)/g, '<video controls><source src="$1" type="video/mp4"></video>');
-            // Image ပြောင်းလဲခြင်း
-            content = content.replace(/!\[.*?\]\((.*?\.(jpg|jpeg|png|gif|webp))\)/g, '<img src="$1" loading="lazy">');
-            // အခြား File (PDF, Zip) များ
-            content = content.replace(/\[(.*?)\]\((.*?\.(pdf|zip|docx|xlsx))\)/g, '<a href="$2" class="file-link">📁 Download $1</a>');
+            // ၁။ ပုံများအတွက် (GitHub ရဲ့ Format မျိုးစုံကို လက်ခံအောင် ပြင်ထားပါတယ်)
+            // ! [Image] (url) ပုံစံ
+            content = content.replace(/!\[.*?\]\((.*?\.(jpg|jpeg|png|gif|webp|bmp).*?)\)/gi, '<img src="$1" alt="post-image">');
+            
+            // ၂။ Video များအတွက်
+            content = content.replace(/!\[.*?\]\((.*?\.(mp4|mov|webm).*?)\)/gi, '<video controls><source src="$1" type="video/mp4"></video>');
+
+            // ၃။ အခြား File (PDF, Zip) များအတွက်
+            content = content.replace(/\[(.*?)\]\((.*?\.(pdf|zip|docx|xlsx|rar).*?)\)/gi, '<a href="$2" target="_blank" class="file-link">📁 Download $1</a>');
+
+            // ၄။ အကယ်၍ Markdown format မဟုတ်ဘဲ link သီးသန့်ဖြစ်နေလျှင်လည်း ပုံအဖြစ်ပြောင်းပေးခြင်း
+            if (content.includes('https://github.com/user-attachments/assets/') && !content.includes('<img')) {
+                content = content.replace(/(https:\/\/github\.com\/user-attachments\/assets\/[^\s\)]+)/gi, '<img src="$1" alt="attachment">');
+            }
 
             return `
                 <div class="post-card">
